@@ -1,60 +1,76 @@
 import fs from 'fs';
-import { pipeline, env } from '@xenova/transformers';
+import { pipeline } from '@xenova/transformers';
 import readlineSync from 'readline-sync';
 
 // Create a write stream to a log file
-const logStream = fs.createWriteStream('log.txt', { flags: 'a' });
+const logStream = fs.createWriteStream('pipeline.log', { flags: 'a' });
 
-// Function to log messages to the file
-function logToFileSync(message) {
-  logStream.write(`${message}\n`);
+// Custom logging function with detailed information
+function logToFileSyncWithDetails(message, details = {}) {
+  const timestamp = new Date().toISOString();
+  let logMessage = `${timestamp} - ${message}`;
+
+  if (Object.keys(details).length > 0) {
+    logMessage += ' - Details: ' + JSON.stringify(details);
+  }
+
+  logStream.write(`${logMessage}\n`);
 }
 
-// Function to generate code
+// Updated code generation function with detailed logging
 async function generateCode(prompt) {
-  logToFileSync(`Generating code for prompt: ${prompt}`);
+  logToFileSyncWithDetails("Generating code for prompt", { prompt });
 
   try {
-    logToFileSync("Loading text generation pipeline...");
-    const textGenerationPipeline = await pipeline("text-generation", "Xenova/starcoderbase-1b", logToFileSync);
-    logToFileSync("Pipeline loaded successfully");
+    logToFileSyncWithDetails("Loading text generation pipeline");
 
-    logToFileSync("Generating code...");
+    const textGenerationPipeline = await pipeline("text-generation", "Xenova/starcoderbase-1b", logToFileSyncWithDetails);
+    logToFileSyncWithDetails("Pipeline loaded successfully");
+
+    logToFileSyncWithDetails("Generating code");
+
     const results = await textGenerationPipeline(prompt);
-    logToFileSync("Code generation successful");
+    logToFileSyncWithDetails("Code generation successful", { results });
+
     return results;
   } catch (error) {
-    logToFileSync(`Error generating code: ${error}`);
-    throw error; // Rethrow the error to handle it in the main function
+    logToFileSyncWithDetails("Error generating code", { error });
+    throw error;
   }
 }
 
-// Main function
+// Main function with custom logging
 async function main() {
-    while (true) {
-        logToFileSync("Starting the code generation process...");
+  logToFileSyncWithDetails("Starting the code generation process...");
 
-        console.log("What kind of code would you like to generate?");
-        let prompt = await readlineSync.question();
+  while (true) {
+      logToFileSyncWithDetails("Prompting user for code type...");
 
-        try {
-            logToFileSync(`Generating code based on the prompt: ${prompt}`);
-            const generatedCode = await generateCode(prompt);
-            logToFileSync("Generated Code:\n" + generatedCode);
-        } catch (error) {
-            logToFileSync(`Error generating code: ${error}`);
-            console.error("Error generating code:", error);
-        }
+      console.log("What kind of code would you like to generate?");
+      let prompt = await readlineSync.question();
 
-        console.log("Would you like to generate more code (y/n)?");
-        let answer = await readlineSync.question().toLowerCase();
+      try {
+          logToFileSyncWithDetails(`Generating code based on the prompt: ${prompt}`);
+          const generatedCode = await generateCode(prompt);
+          logToFileSyncWithDetails("Generated Code:\n" + generatedCode);
+      } catch (error) {
+          logToFileSyncWithDetails(`Error generating code: ${error}`);
+          console.error("Error generating code:", error);
+      }
 
-        if (answer !== "y") {
-            break;
-        }
-    }
+      console.log("Would you like to generate more code (y/n)?");
+      let answer = await readlineSync.question().toLowerCase();
 
-    logToFileSync("Code generation process completed.");
+      if (answer !== "y") {
+          break;
+      }
+  }
+
+  logToFileSyncWithDetails("Code generation process completed.");
+
+  // Close the log stream after completion
+  logStream.end();
+  logToFileSyncWithDetails("Finished");
 }
 
 main();
